@@ -19,9 +19,8 @@ WORKDIR /app
 
 COPY --from=build /out/rdai-bot /usr/local/bin/rdai-bot
 
-RUN mkdir -p /data
-
 EXPOSE 8080
+ENV SQLITE_PATH=/data/rdai-bot.db
 VOLUME ["/data"]
 
 ENTRYPOINT ["/usr/local/bin/rdai-bot"]

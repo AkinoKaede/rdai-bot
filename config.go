@@ -35,7 +35,7 @@ type Config struct {
 func LoadConfig(args []string, getenv func(string) string) (Config, error) {
 	fs := flag.NewFlagSet("rdai-bot", flag.ContinueOnError)
 
-	sqliteDefault := firstNonEmpty(getenv("SQLITE_PATH"), "/data/rdai-bot.db")
+	sqliteDefault := firstNonEmpty(getenv("SQLITE_PATH"), "rdai-bot.db")
 	httpAddrDefault := firstNonEmpty(getenv("HTTP_ADDR"), defaultHTTPAddr)
 	httpPrefixDefault := normalizeHTTPPathPrefix(getenv("HTTP_PATH_PREFIX"))
 	ttlDefault := firstNonEmpty(getenv("TOKEN_TTL"), defaultTokenTTL.String())
