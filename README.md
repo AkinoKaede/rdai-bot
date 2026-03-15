@@ -1,6 +1,6 @@
 # RDAI Telegram Verification Bot
 
-This project turns the original AxonHub GraphQL example into a small Go web application that:
+This project is a Go web application that:
 
 - serves an English frontend page
 - generates a one-time verification token asynchronously after the page loads
