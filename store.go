@@ -120,6 +120,13 @@ func (s *Store) CreateVerification(ctx context.Context, ttl time.Duration) (*Ver
 }
 
 func (s *Store) GetByToken(ctx context.Context, token string) (*VerificationRecord, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.getByTokenLocked(ctx, token)
+}
+
+func (s *Store) getByTokenLocked(ctx context.Context, token string) (*VerificationRecord, error) {
 	record, err := s.loadByToken(ctx, token)
 	if err != nil {
 		return nil, err
@@ -136,7 +143,10 @@ func (s *Store) GetByToken(ctx context.Context, token string) (*VerificationReco
 }
 
 func (s *Store) GetBySession(ctx context.Context, token string, sessionToken string) (*VerificationRecord, error) {
-	record, err := s.GetByToken(ctx, token)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	record, err := s.getByTokenLocked(ctx, token)
 	if err != nil {
 		return nil, err
 	}

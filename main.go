@@ -13,6 +13,7 @@ import (
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
+	"golang.org/x/time/rate"
 )
 
 func main() {
@@ -45,10 +46,14 @@ func run() error {
 
 	tgClient := NewTelegramHTTPClient(cfg.TelegramBotToken)
 	bot := NewTelegramBot(cfg, store, tgClient)
-	app := NewApp(cfg, store, issuer, bot)
+
+	limiter := newIPRateLimiter(rate.Limit(cfg.RateLimit), cfg.RateBurst)
+	app := NewApp(cfg, store, issuer, bot, limiter)
 
 	rootCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	go limiter.startCleanup(rootCtx, 5*time.Minute, 10*time.Minute)
 
 	server := &http.Server{
 		Addr:              cfg.HTTPAddr,

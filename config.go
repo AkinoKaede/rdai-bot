@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -27,6 +28,8 @@ type Config struct {
 	TelegramWebhookURL    string
 	TelegramWebhookSecret string
 	TokenTTL              time.Duration
+	RateLimit             float64
+	RateBurst             int
 }
 
 func LoadConfig(args []string, getenv func(string) string) (Config, error) {
@@ -55,6 +58,22 @@ func LoadConfig(args []string, getenv func(string) string) (Config, error) {
 		return Config{}, fmt.Errorf("parse TOKEN_TTL: %w", err)
 	}
 
+	rateLimit := 10.0
+	if v := getenv("RATE_LIMIT"); v != "" {
+		rateLimit, err = strconv.ParseFloat(v, 64)
+		if err != nil {
+			return Config{}, fmt.Errorf("parse RATE_LIMIT: %w", err)
+		}
+	}
+
+	rateBurst := 20
+	if v := getenv("RATE_BURST"); v != "" {
+		rateBurst, err = strconv.Atoi(v)
+		if err != nil {
+			return Config{}, fmt.Errorf("parse RATE_BURST: %w", err)
+		}
+	}
+
 	cfg := Config{
 		HTTPAddr:              *httpAddr,
 		HTTPPathPrefix:        normalizeHTTPPathPrefix(*httpPathPrefix),
@@ -67,6 +86,8 @@ func LoadConfig(args []string, getenv func(string) string) (Config, error) {
 		TelegramWebhookURL:    strings.TrimSpace(getenv("TELEGRAM_WEBHOOK_URL")),
 		TelegramWebhookSecret: strings.TrimSpace(getenv("TELEGRAM_WEBHOOK_SECRET")),
 		TokenTTL:              tokenTTL,
+		RateLimit:             rateLimit,
+		RateBurst:             rateBurst,
 	}
 
 	if err := cfg.Validate(); err != nil {

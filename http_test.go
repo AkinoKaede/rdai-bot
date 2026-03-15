@@ -26,7 +26,7 @@ func TestHTTPHandlersWithPrefixAndEndToEndFlow(t *testing.T) {
 		TokenTTL:           24 * time.Hour,
 		TelegramUseWebhook: false,
 	}
-	app := NewApp(cfg, store, issuer, bot)
+	app := NewApp(cfg, store, issuer, bot, newIPRateLimiter(1000, 1000))
 	server := httptest.NewServer(app.Handler())
 	defer server.Close()
 
@@ -114,7 +114,7 @@ func TestTelegramWebhookRejectsInvalidSecret(t *testing.T) {
 		TelegramUseWebhook:    true,
 		TelegramWebhookSecret: "expected-secret",
 		TelegramChannelID:     -100123,
-	}, store, &fakeIssuer{}, bot)
+	}, store, &fakeIssuer{}, bot, newIPRateLimiter(1000, 1000))
 
 	request := httptest.NewRequest(http.MethodPost, defaultWebhookPath, bytes.NewReader([]byte(`{"update_id":1}`)))
 	request.Header.Set("Content-Type", "application/json")

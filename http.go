@@ -16,6 +16,7 @@ type App struct {
 	store    *Store
 	issuer   KeyIssuer
 	bot      *TelegramBot
+	limiter  *ipRateLimiter
 	template *template.Template
 }
 
@@ -46,12 +47,13 @@ type errorResponse struct {
 	Message string `json:"message"`
 }
 
-func NewApp(cfg Config, store *Store, issuer KeyIssuer, bot *TelegramBot) *App {
+func NewApp(cfg Config, store *Store, issuer KeyIssuer, bot *TelegramBot, limiter *ipRateLimiter) *App {
 	return &App{
 		cfg:      cfg,
 		store:    store,
 		issuer:   issuer,
 		bot:      bot,
+		limiter:  limiter,
 		template: mustParseTemplates(),
 	}
 }
@@ -67,12 +69,14 @@ func (a *App) Handler() http.Handler {
 	rootMux := http.NewServeMux()
 	rootMux.HandleFunc(defaultWebhookPath, a.handleTelegramWebhook)
 
+	rateLimited := rateLimitMiddleware(a.limiter)(appMux)
+
 	if a.cfg.HTTPPathPrefix == "" {
-		rootMux.Handle("/", appMux)
+		rootMux.Handle("/", rateLimited)
 		return a.loggingMiddleware(rootMux)
 	}
 
-	rootMux.Handle(a.cfg.HTTPPathPrefix+"/", http.StripPrefix(a.cfg.HTTPPathPrefix, appMux))
+	rootMux.Handle(a.cfg.HTTPPathPrefix+"/", http.StripPrefix(a.cfg.HTTPPathPrefix, rateLimited))
 	rootMux.HandleFunc("GET "+a.cfg.HTTPPathPrefix, func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, a.cfg.HTTPPathPrefix+"/", http.StatusTemporaryRedirect)
 	})
@@ -133,7 +137,7 @@ func (a *App) handleVerificationStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req tokenRequest
-	if err := decodeJSON(r, &req); err != nil {
+	if err := decodeJSON(w, r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_request", "Invalid JSON request.")
 		return
 	}
@@ -157,7 +161,7 @@ func (a *App) handleCreateKey(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req tokenRequest
-	if err := decodeJSON(r, &req); err != nil {
+	if err := decodeJSON(w, r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_request", "Invalid JSON request.")
 		return
 	}
@@ -249,7 +253,10 @@ func statusMessage(status VerificationStatus) string {
 	}
 }
 
-func decodeJSON(r *http.Request, target any) error {
+const maxRequestBodySize = 1 << 20 // 1 MB
+
+func decodeJSON(w http.ResponseWriter, r *http.Request, target any) error {
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
 	defer r.Body.Close()
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()

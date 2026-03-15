@@ -33,6 +33,8 @@ Environment variables:
 - `TELEGRAM_WEBHOOK_URL`: Public base URL used when webhook mode is enabled
 - `TELEGRAM_WEBHOOK_SECRET`: Secret value used for Telegram webhook authentication
 - `SQLITE_PATH`: Optional fallback SQLite path if `--sqlite-path` is not set, default `/data/rdai-bot.db`
+- `RATE_LIMIT`: Requests per second per IP for public API endpoints, default `10`
+- `RATE_BURST`: Maximum burst size for rate limiting, default `20`
 
 CLI arguments:
 

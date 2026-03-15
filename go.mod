@@ -6,7 +6,10 @@ tool github.com/Khan/genqlient
 
 require github.com/Khan/genqlient v0.8.2-0.20251119064104-5b0aabc933fa
 
-require github.com/mattn/go-sqlite3 v1.14.32
+require (
+	github.com/mattn/go-sqlite3 v1.14.32
+	golang.org/x/time v0.15.0
+)
 
 require (
 	github.com/agnivade/levenshtein v1.2.1 // indirect
