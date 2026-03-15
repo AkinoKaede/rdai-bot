@@ -203,7 +203,7 @@ func (a *App) handleTelegramWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var update TelegramUpdate
-	if err := decodeJSON(r, &update); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_request", "Invalid Telegram update payload.")
 		return
 	}
