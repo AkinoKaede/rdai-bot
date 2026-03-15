@@ -1,0 +1,27 @@
+FROM golang:1.26-alpine AS build
+
+RUN apk add --no-cache build-base
+
+WORKDIR /src
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -o /out/rdai-bot .
+
+FROM alpine:3.21
+
+RUN apk add --no-cache ca-certificates
+
+WORKDIR /app
+
+COPY --from=build /out/rdai-bot /usr/local/bin/rdai-bot
+
+RUN mkdir -p /data
+
+EXPOSE 8080
+VOLUME ["/data"]
+
+ENTRYPOINT ["/usr/local/bin/rdai-bot"]

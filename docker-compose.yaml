@@ -1,0 +1,18 @@
+services:
+  rdai-bot:
+    image: ghcr.io/akinokaede/rdai-bot:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+    environment:
+      AXONHUB_API_KEY: "your_service_account_key"
+      AXONHUB_ENDPOINT: "http://host.docker.internal:8090/openapi/v1/graphql"
+      TELEGRAM_BOT_TOKEN: "your_bot_token"
+      TELEGRAM_CHANNEL_ID: "-1001234567890"
+      HTTP_ADDR: "0.0.0.0:8080"
+      HTTP_PATH_PREFIX: ""
+      TOKEN_TTL: "24h"
+      TELEGRAM_USE_WEBHOOK: "false"
+      TELEGRAM_WEBHOOK_URL: ""
+      TELEGRAM_WEBHOOK_SECRET: ""

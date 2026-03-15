@@ -1,0 +1,10 @@
+rdai-bot
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+/data/
+/tmp/
+.DS_Store
+.idea/
+.vscode/
