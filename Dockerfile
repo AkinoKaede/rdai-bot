@@ -1,4 +1,4 @@
-FROM golang:1.26-alpine AS build
+FROM --platform=$TARGETPLATFORM golang:1.26-alpine AS build
 
 RUN apk add --no-cache build-base
 
@@ -9,9 +9,9 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -o /out/rdai-bot .
+RUN CGO_ENABLED=1 go build -o /out/rdai-bot .
 
-FROM alpine:3.21
+FROM --platform=$TARGETPLATFORM alpine:3.21
 
 RUN apk add --no-cache ca-certificates
 

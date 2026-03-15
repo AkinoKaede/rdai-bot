@@ -128,9 +128,22 @@ See [docker-compose.yaml](/Users/kaede/Developer/Utilities/rdai-bot/docker-compo
 
 Publishing a GitHub Release triggers [release-ghcr.yml](/Users/kaede/Developer/Utilities/rdai-bot/.github/workflows/release-ghcr.yml), which:
 
-- builds the Docker image from `Dockerfile`
-- pushes it to `ghcr.io/<owner>/<repo>`
-- tags it with the release version and `latest`
+- builds per-platform images from `Dockerfile`
+- pushes them to `ghcr.io/<owner>/<repo>` by digest
+- merges them into a multi-arch manifest
+- tags the final image with the release version and `latest`
+
+You can also trigger the workflow manually with `workflow_dispatch` and provide a `tag` input to rebuild a specific tag.
+
+Current release platforms:
+
+- `linux/amd64`
+- `linux/arm64`
+- `linux/arm/v7`
+- `linux/386`
+- `linux/ppc64le`
+- `linux/riscv64`
+- `linux/s390x`
 
 Example image name for this repository:
 

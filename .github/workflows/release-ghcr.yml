@@ -2,22 +2,60 @@ name: Publish Docker Image
 
 on:
   release:
-    types: [published]
-
-permissions:
-  contents: read
-  packages: write
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The tag version to build
+        required: false
+        type: string
 
 jobs:
-  build-and-push:
+  build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: true
+      matrix:
+        platform:
+          - linux/amd64
+          - linux/arm64
+          - linux/arm/v7
+          - linux/386
+          - linux/ppc64le
+          - linux/riscv64
+          - linux/s390x
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Resolve build ref
+        id: ref
+        run: |
+          if [[ -n "${{ github.event.inputs.tag }}" ]]; then
+            ref="${{ github.event.inputs.tag }}"
+          else
+            ref="${{ github.ref_name }}"
+          fi
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
 
       - name: Normalize image name
         id: image
         run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.ref.outputs.ref }}
+
+      - name: Prepare platform pair
+        id: prep
+        run: |
+          platform='${{ matrix.platform }}'
+          echo "platform_pair=${platform//\//-}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -26,7 +64,7 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
+          username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract Docker metadata
@@ -34,15 +72,80 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ steps.image.outputs.name }}
-          tags: |
-            type=semver,pattern={{version}}
-            type=raw,value=latest
 
-      - name: Build and push
+      - name: Build and push by digest
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,name=${{ steps.image.outputs.name }},push-by-digest=true,name-canonical=true,push=true
+
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest='${{ steps.build.outputs.digest }}'
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ steps.prep.outputs.platform_pair }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    needs:
+      - build
+    steps:
+      - name: Resolve build ref
+        id: ref
+        run: |
+          if [[ -n "${{ github.event.inputs.tag }}" ]]; then
+            ref="${{ github.event.inputs.tag }}"
+          else
+            ref="${{ github.ref_name }}"
+          fi
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "latest=latest" >> "$GITHUB_OUTPUT"
+
+      - name: Normalize image name
+        id: image
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create \
+            -t "${{ steps.image.outputs.name }}:${{ steps.ref.outputs.latest }}" \
+            -t "${{ steps.image.outputs.name }}:${{ steps.ref.outputs.ref }}" \
+            $(printf '${{ steps.image.outputs.name }}@sha256:%s ' *)
+
+      - name: Inspect pushed image
+        run: |
+          docker buildx imagetools inspect "${{ steps.image.outputs.name }}:${{ steps.ref.outputs.latest }}"
+          docker buildx imagetools inspect "${{ steps.image.outputs.name }}:${{ steps.ref.outputs.ref }}"
