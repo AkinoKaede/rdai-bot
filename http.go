@@ -214,8 +214,6 @@ func (a *App) handleTelegramWebhook(w http.ResponseWriter, r *http.Request) {
 
 	if err := a.bot.ProcessUpdate(context.Background(), update); err != nil {
 		log.Printf("process telegram webhook update: %v", err)
-		writeError(w, http.StatusBadGateway, "telegram_update_failed", "Failed to process Telegram update.")
-		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)
