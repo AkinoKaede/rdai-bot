@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -102,7 +103,7 @@ func (b *TelegramBot) RunPolling(ctx context.Context) error {
 		for _, update := range updates {
 			offset = update.UpdateID + 1
 			if err := b.ProcessUpdate(ctx, update); err != nil {
-				return err
+				log.Printf("process telegram update %d: %v", update.UpdateID, err)
 			}
 		}
 	}
