@@ -301,6 +301,10 @@
           setStatus("API key is already displayed on this page.", "success");
           return;
         }
+        if (error.code === "token_expired" || error.code === "token_not_found" || error.code === "session_not_found") {
+          await renewVerification("Token expired. A new verification token is ready.");
+          return;
+        }
         setStatus(error.message || "Failed to request API key.", "error");
       } finally {
         buttonEl.disabled = false;
