@@ -221,22 +221,24 @@
 
     async function ensureVerificationStarted() {
       if (currentToken && currentSessionToken) {
-        return;
+        return true;
       }
 
       try {
         const payload = await postJSON(startEndpoint, {});
         setVerificationState(payload);
         setStatus("Verification token is ready.", "success");
+        return true;
       } catch (error) {
         setStatus(error.message || "Failed to start verification.", "error");
+        return false;
       }
     }
 
     async function renewVerification(message) {
       clearVerificationState();
-      await ensureVerificationStarted();
-      if (message) {
+      const started = await ensureVerificationStarted();
+      if (started && message) {
         setStatus(message, "success");
       }
     }
@@ -253,6 +255,8 @@
         const statusPayload = await postJSON(statusEndpoint, payload);
         if (statusPayload.status === "verified") {
           setStatus("Verification is complete. You can request an API key.", "success");
+        } else if (statusPayload.status === "expired") {
+          await renewVerification("Token expired. A new verification token is ready.");
         } else if (statusPayload.status === "issued") {
           await renewVerification("Previous verification was already used. A new token is ready.");
         }
@@ -283,6 +287,11 @@
             return;
           }
           await renewVerification("Previous verification was already used. A new token is ready.");
+          return;
+        }
+
+        if (statusPayload.status === "expired") {
+          await renewVerification("Token expired. A new verification token is ready.");
           return;
         }
 

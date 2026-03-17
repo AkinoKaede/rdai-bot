@@ -47,6 +47,12 @@ func TestHTTPHandlersWithPrefixAndEndToEndFlow(t *testing.T) {
 	if strings.Contains(body, "Start Verification") {
 		t.Fatalf("did not expect a start verification button in page body")
 	}
+	if !strings.Contains(body, `statusPayload.status === "expired"`) {
+		t.Fatalf("expected frontend to handle expired verification status")
+	}
+	if !strings.Contains(body, `const started = await ensureVerificationStarted();`) {
+		t.Fatalf("expected renewVerification to check whether token renewal succeeded")
+	}
 
 	startCode, startPayload := postJSON(t, server.URL+"/app/api/verification/start", map[string]any{})
 	if startCode != http.StatusOK {
